@@ -1,0 +1,1 @@
+It is the Second Brain of yours where you can dump anything worth remembering in the future.
