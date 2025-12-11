@@ -17,6 +17,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const models_1 = require("./database/models");
 const config_1 = require("./config");
 const middleware_1 = require("./middleware/middleware");
+const utils_1 = require("./utils");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -83,17 +84,72 @@ app.get("/api/v1/content", middleware_1.userMiddleware, (req, res) => __awaiter(
     // @ts-ignore
     const userRef = req.userRef;
     const content = yield models_1.Content.find({
-        //  @ts-ignore
         userRef: userRef
     }).populate("userRef", "username ");
     res.json({
         content
     });
 }));
-app.delete("/api/v1/content", (req, res) => {
-});
-app.post("/api/v1/brain/share", (req, res) => {
-});
-app.get("/api/v1/brain/share", (req, res) => {
-});
+app.delete("/api/v1/content", middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    //  @ts-ignore 
+    const userRef = req.userRef;
+    //  @ts-ignore
+    const contentId = req.body.ContentId;
+    try {
+        yield models_1.Content.deleteOne({
+            contentId,
+            userRef
+        });
+        res.json({
+            message: "Content Deleted"
+        });
+    }
+    catch (e) {
+        res.status(403).json({
+            message: "You are not authorised to delete this."
+        });
+    }
+}));
+app.post("/api/v1/brain/share", middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const share = req.body.share;
+    const hash = (0, utils_1.generateHash)(12);
+    if (share) {
+        yield models_1.Links.create({
+            hash: hash,
+            // @ts-ignore
+            userRef: req.userRef
+        });
+        res.json({
+            message: "Link Shared",
+            hash
+        });
+    }
+    else {
+        res.json({
+            message: "The link is not sharable."
+        });
+    }
+}));
+app.get("/api/v1/brain/:sharelink", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const hash = req.params.sharelink;
+    const link = yield models_1.Links.findOne({
+        hash: hash
+    });
+    if (!link) {
+        res.status(411).json({
+            message: "Not sharable"
+        });
+        return;
+    }
+    const content = yield models_1.Content.find({
+        userRef: link.userRef
+    });
+    const user = yield models_1.User.findOne({
+        _id: link.userRef
+    });
+    res.json({
+        content,
+        user
+    });
+}));
 app.listen(3000);
